@@ -12,6 +12,8 @@ import {ICrossDomainMessenger} from "@mantleio/contracts/libraries/bridge/ICross
 import "./interfaces/linea/MessageServiceBase.sol";
 
 contract MainUnifySafeModule {
+    event MainUnifySafeModuleDeployed(address thisAddress);
+
     GnosisSafe public safe;
 
     IPolygonZkEVMBridge public polygonZkEVMBridge;
@@ -27,6 +29,8 @@ contract MainUnifySafeModule {
 
         polygonZkEVMBridge = polygonZkEVMBridge_;
         polygonZkEVMReceiverModule = polygonZkEVMReceiverModule_;
+
+        emit MainUnifySafeModuleDeployed(address(this));
     }
 
     function upgradeSettings() public {

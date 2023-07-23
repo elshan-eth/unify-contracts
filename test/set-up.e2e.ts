@@ -1,9 +1,14 @@
 import { ethers } from "ethers";
 import Safe, { EthersAdapter } from "@safe-global/protocol-kit";
 import fs from "fs";
-import { UniversalFactory__factory } from "../typechain-types";
+import {
+  IPolygonZkEVMBridge__factory,
+  PZkVMReceiverUnifySafeModule__factory,
+  UniversalFactory__factory,
+} from "../typechain-types";
 import { GelatoRelay } from "@gelatonetwork/relay-sdk";
 import { MainUnifySafeModule__factory } from "../typechain-types/factories/contracts";
+import axios from "axios";
 
 export enum TaskState {
   CheckPending = "CheckPending",
@@ -14,6 +19,27 @@ export enum TaskState {
   Blacklisted = "Blacklisted",
   Cancelled = "Cancelled",
   NotFound = "NotFound",
+}
+
+interface PolygonBridgeResponse {
+  deposits: Deposit[];
+  total_cnt: string;
+}
+
+interface Deposit {
+  leaf_type: number;
+  orig_net: number;
+  orig_addr: string;
+  amount: string;
+  dest_net: number;
+  dest_addr: string;
+  block_num: string;
+  deposit_cnt: string;
+  network_id: number;
+  tx_hash: string;
+  claim_tx_hash: string;
+  metadata: string;
+  ready_for_claim: boolean;
 }
 
 export const waitRelayerTX = async (
@@ -74,7 +100,7 @@ describe("Set-up subs e2e", function () {
     signerOrProvider: ethWallet,
   });
 
-  it("Create a sub account (Polygon ZKVM)", async () => {
+  it("Instal module", async () => {
     try {
       testState = JSON.parse(
         fs.readFileSync("./test/test-state.json").toString()
@@ -210,4 +236,70 @@ describe("Set-up subs e2e", function () {
         ).data!,
         */
   }).timeout(50000);
+
+  it("Test mock", async () => {
+    const tx = await PZkVMReceiverUnifySafeModule__factory.connect(
+      testState.polygonZKVMReceiverModule!,
+      pZkEVMWallet
+    ).onMessageReceived(
+      testState.mainModule!,
+      0,
+      "0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000085fbc7b5087cc7b4fe3fe97755d8e01c9fd727d9"
+    );
+
+    await tx.wait();
+  }).timeout(50000);
+  /*
+  it("Cross-chain test", async () => {
+   
+    const tx = await MainUnifySafeModule__factory.connect(
+      testState.mainModule!,
+      ethWallet
+    ).upgradeSettings();
+    await tx.wait();
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+
+    const zkBridgeResponse = await axios.get(
+      `https://bridge-api.public.zkevm-test.net/bridges/${testState.polygonZKVMReceiverModule}`
+    );
+
+    const polygonBridgeResponse: PolygonBridgeResponse = zkBridgeResponse.data;
+
+    console.log(polygonBridgeResponse);
+    for (const deposit of polygonBridgeResponse.deposits) {
+      if (!deposit.ready_for_claim) {
+        continue;
+      }
+
+      const proofAxios = await axios.get(
+        `https://bridge-api.public.zkevm-test.net/merkle-proof`,
+        {
+          params: {
+            deposit_cnt: deposit.deposit_cnt,
+            net_id: deposit.orig_net,
+          },
+        }
+      );
+
+      const { proof } = proofAxios.data;
+      const claimTx = await IPolygonZkEVMBridge__factory.connect(
+        "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
+        pZkEVMWallet
+      ).claimMessage(
+        proof.merkle_proof,
+        deposit.deposit_cnt,
+        proof.main_exit_root,
+        proof.rollup_exit_root,
+        deposit.orig_net,
+        deposit.orig_addr,
+        deposit.dest_net,
+        deposit.dest_addr,
+        deposit.amount,
+        deposit.metadata
+      );
+
+      await claimTx.wait();
+    }
+  }).timeout(50000);*/
 });

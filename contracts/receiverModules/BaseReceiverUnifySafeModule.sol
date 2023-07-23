@@ -19,21 +19,25 @@ contract BaseReceiverUnifySafeModule {
     ) internal {
         address[] memory oldOwners = safe.getOwners();
 
+        address temp = address(0x55555);
+        require(
+            safe.execTransactionFromModule(
+                address(safe),
+                0,
+                abi.encodeCall(safe.addOwnerWithThreshold, (temp, threshold)),
+                Enum.Operation.Call
+            ),
+            "Add temp owner failed"
+        );
+
         for (uint256 i = 0; i < oldOwners.length; i++) {
             address owner = oldOwners[i];
-            address prevOwner = address(0x1);
-            if (i != 0) {
-                prevOwner = oldOwners[i - 1];
-            }
 
             require(
                 safe.execTransactionFromModule(
                     address(safe),
                     0,
-                    abi.encodeCall(
-                        safe.removeOwner,
-                        (prevOwner, owner, threshold)
-                    ),
+                    abi.encodeCall(safe.removeOwner, (temp, owner, threshold)),
                     Enum.Operation.Call
                 ),
                 "Remove owner failed"
@@ -56,5 +60,18 @@ contract BaseReceiverUnifySafeModule {
                 "Add owner failed"
             );
         }
+
+        require(
+            safe.execTransactionFromModule(
+                address(safe),
+                0,
+                abi.encodeCall(
+                    safe.removeOwner,
+                    (newOwners[0], temp, threshold)
+                ),
+                Enum.Operation.Call
+            ),
+            "Remove temp owner failed"
+        );
     }
 }

@@ -30,16 +30,11 @@ contract PZkVMReceiverUnifySafeModule is
             "onMessageReceived: Not PolygonZkEVMBridge"
         );
 
-        require(
-            originSender == originAddress_,
-            "onMessageReceived: Not Sender"
-        );
-
         require(originNetwork_ == 0, "onMessageReceived: Not from L1");
 
-        (address[] memory newOwners, uint threshold) = abi.decode(
+        (address[] memory newOwners, uint256 threshold) = abi.decode(
             data_,
-            (address[], uint)
+            (address[], uint256)
         );
 
         _receiveSettingUpdates(newOwners, threshold);
